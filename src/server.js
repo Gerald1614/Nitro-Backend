@@ -14,6 +14,13 @@ import jwtStrategy from './jwt/strategy'
 import jwt from 'jsonwebtoken'
 
 dotenv.config()
+// check env and warn
+const requiredEnvVars = ['MAPBOX_TOKEN', 'JWT_SECRET']
+requiredEnvVars.forEach(env => {
+  if (!process.env[env]) {
+    throw new Error(`ERROR: "${env}" env variable is missing.`)
+  }
+})
 
 let schema = makeExecutableSchema({
   typeDefs,
@@ -52,13 +59,14 @@ const createServer = (options) => {
       return payload
     },
     schema: schema,
+    debug: debug,
     tracing: debug,
     middlewares: middleware(schema),
     mocks: (process.env.MOCK === 'true') ? mocks : false
   }
   const server = new GraphQLServer(Object.assign({}, defaults, options))
 
-  passport.use('jwt', jwtStrategy())
+  passport.use('jwt', jwtStrategy(driver))
   server.express.use(passport.initialize())
 
   server.express.post('/graphql', passport.authenticate(['jwt'], { session: false }))
